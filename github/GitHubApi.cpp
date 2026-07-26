@@ -91,9 +91,20 @@ std::shared_ptr<FileNode> GitHubApi::buildTree(const std::string& jsonStr, const
                 dirPath = node->path.substr(0, lastSlash);
             }
 
-            if (dirMap.count(dirPath)) {
-                dirMap[dirPath]->children.push_back(node);
+            if (!dirMap.count(dirPath)) {
+                auto stub = std::make_shared<FileNode>();
+                stub->path = dirPath;
+                stub->isDir = true;
+                size_t ls = dirPath.find_last_of(L'/');
+                stub->name = (ls != std::wstring::npos) ? dirPath.substr(ls + 1) : dirPath;
+                dirMap[dirPath] = stub;
+                std::wstring grandParent;
+                size_t gps = dirPath.find_last_of(L'/');
+                if (gps != std::wstring::npos) grandParent = dirPath.substr(0, gps);
+                if (dirMap.count(grandParent)) dirMap[grandParent]->children.push_back(stub);
             }
+
+            dirMap[dirPath]->children.push_back(node);
 
             if (node->isDir) {
                 dirMap[node->path] = node;

@@ -22,14 +22,14 @@ public:
     void drawLine(D2D1_POINT_2F a, D2D1_POINT_2F b, const D2D1_COLOR_F& color, float width = 1.0f);
     void drawGradientRectangle(const D2D1_RECT_F& rect, const D2D1_COLOR_F& top, const D2D1_COLOR_F& bottom);
 
-    void drawText(std::wstring_view text, const D2D1_RECT_F& rect, IDWriteTextFormat* fmt, const D2D1_COLOR_F& color, D2D1_TEXT_ALIGNMENT align = D2D1_TEXT_ALIGNMENT_LEADING);
+    void drawText(std::wstring_view text, const D2D1_RECT_F& rect, IDWriteTextFormat* fmt, const D2D1_COLOR_F& color, DWRITE_TEXT_ALIGNMENT align = DWRITE_TEXT_ALIGNMENT_LEADING);
     void drawTextClipped(std::wstring_view text, const D2D1_RECT_F& rect, IDWriteTextFormat* fmt, const D2D1_COLOR_F& color);
 
     void pushClipRect(const D2D1_RECT_F& rect);
     void popClipRect();
 
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> createBrush(const D2D1_COLOR_F& color);
-    Microsoft::WRL::ComPtr<IDWriteTextFormat> createTextFormat(float fontSize, std::wstring fontFamily = L"Segoe UI Variable", DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL);
+    Microsoft::WRL::ComPtr<IDWriteTextFormat> createTextFormat(float fontSize, std::wstring fontFamily = L"Segoe UI", DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL);
     Microsoft::WRL::ComPtr<IDWriteTextFormat> createMonoTextFormat(float fontSize, DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL);
 
     ID2D1HwndRenderTarget* getRT() const { return m_rt.Get(); }

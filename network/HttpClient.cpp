@@ -36,7 +36,7 @@ bool HttpClient::parseUrl(const std::wstring& url, std::wstring& host, std::wstr
 
     size_t colonPos = host.find(L':');
     if (colonPos != std::wstring::npos) {
-        port = std::stoi(host.substr(colonPos + 1));
+        try { port = std::stoi(host.substr(colonPos + 1)); } catch (...) {}
         host = host.substr(0, colonPos);
     }
     return !host.empty();
@@ -107,6 +107,12 @@ bool HttpClient::downloadToFile(const std::wstring& url, const fs::path& dest,
 
     HINTERNET request = openUrl(url);
     if (!request) return false;
+
+    DWORD statusCode = 0;
+    DWORD scSize = sizeof(statusCode);
+    WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+        WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &scSize, WINHTTP_NO_HEADER_INDEX);
+    if (statusCode < 200 || statusCode >= 300) { WinHttpCloseHandle(request); return false; }
 
     DWORD totalSize = 0;
     DWORD sizeLen = sizeof(totalSize);

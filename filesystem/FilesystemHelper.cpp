@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "filesystem/FilesystemHelper.h"
+#include "FilesystemHelper.h"
 
 bool FilesystemHelper::ensureDirectory(const fs::path& path) {
     std::error_code ec;
@@ -24,9 +24,11 @@ uint64_t FilesystemHelper::getFileSize(const fs::path& path) {
 }
 
 fs::path FilesystemHelper::getDownloadsFolder() {
-    wchar_t path[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_DOWNLOADS, nullptr, 0, path))) {
-        return path;
+    PWSTR path = nullptr;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Downloads, 0, nullptr, &path))) {
+        fs::path result(path);
+        CoTaskMemFree(path);
+        return result;
     }
     return fs::temp_directory_path();
 }

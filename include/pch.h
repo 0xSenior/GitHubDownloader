@@ -1,7 +1,5 @@
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 #include <windowsx.h>
 #include <d2d1.h>
@@ -14,6 +12,8 @@
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <commdlg.h>
+#include <shellapi.h>
+#include <knownfolders.h>
 
 #include <string>
 #include <string_view>
@@ -40,8 +40,11 @@
 #include <source_location>
 
 #include "Types.h"
-
 namespace fs = std::filesystem;
+
+#include "utils/StringHelper.h"
+#include "utils/Logger.h"
+#include "filesystem/FilesystemHelper.h"
 
 constexpr int WINDOW_MIN_WIDTH = 860;
 constexpr int WINDOW_MIN_HEIGHT = 640;

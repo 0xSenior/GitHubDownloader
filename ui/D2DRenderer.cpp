@@ -53,7 +53,7 @@ D2D1_SIZE_F D2DRenderer::getSize() const { return m_rt ? m_rt->GetSize() : D2D1:
 
 Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> D2DRenderer::createBrush(const D2D1_COLOR_F& c) {
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> b;
-    if (m_rt) m_rt->CreateColorBrush(c, b.GetAddressOf());
+    if (m_rt) m_rt->CreateSolidColorBrush(c, b.GetAddressOf());
     return b;
 }
 
@@ -112,7 +112,7 @@ void D2DRenderer::drawGradientRectangle(const D2D1_RECT_F& r, const D2D1_COLOR_F
 }
 
 void D2DRenderer::drawText(std::wstring_view text, const D2D1_RECT_F& r, IDWriteTextFormat* fmt,
-    const D2D1_COLOR_F& c, D2D1_TEXT_ALIGNMENT align) {
+    const D2D1_COLOR_F& c, DWRITE_TEXT_ALIGNMENT align) {
     if (!fmt) return;
     fmt->SetTextAlignment(align);
     fmt->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
@@ -125,7 +125,9 @@ void D2DRenderer::drawTextClipped(std::wstring_view text, const D2D1_RECT_F& r, 
     if (!fmt) return;
     fmt->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     fmt->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-    fmt->SetTrimming(DWRITE_TRIMMING_GRANULARITY_CHARACTER, nullptr);
+    DWRITE_TRIMMING trimming = {};
+    trimming.granularity = DWRITE_TRIMMING_GRANULARITY_CHARACTER;
+    fmt->SetTrimming(&trimming, nullptr);
     auto b = createBrush(c);
     if (b) m_rt->DrawText(text.data(), (UINT32)text.length(), fmt, r, b.Get());
 }

@@ -1,5 +1,8 @@
 #pragma once
-#include "pch.h"
+#include <filesystem>
+#include <string>
+
+namespace fs = std::filesystem;
 
 enum class FilesystemResult { Success, AlreadyExists, Error };
 

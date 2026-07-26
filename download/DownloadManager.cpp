@@ -35,19 +35,19 @@ void DownloadManager::startDownload(const std::wstring& owner, const std::wstrin
 
 void DownloadManager::collectFiles(std::shared_ptr<FileNode> node, const std::wstring& prefix) {
     if (!node) return;
-    if (!node->isDir) {
-        DownloadTask task;
-        task.relativePath = prefix.empty() ? node->name : prefix + L"/" + node->name;
-        task.destPath = m_destDir / fs::path(task.relativePath);
-        task.url = L"https://raw.githubusercontent.com/" + m_owner + L"/" + m_name +
-                   L"/" + m_branch + L"/" + task.relativePath;
-        task.fileSize = node->size;
-        m_tasks.push_back(std::move(task));
-    }
     for (auto& child : node->children) {
-        std::wstring childPrefix = prefix.empty() ? node->name : prefix + L"/" + node->name;
-        if (node == child) continue;
-        collectFiles(child, childPrefix);
+        std::wstring childPrefix = prefix.empty() ? child->name : prefix + L"/" + child->name;
+        if (child->isDir) {
+            collectFiles(child, childPrefix);
+        } else {
+            DownloadTask task;
+            task.relativePath = childPrefix;
+            task.destPath = m_destDir / fs::path(task.relativePath);
+            task.url = L"https://raw.githubusercontent.com/" + m_owner + L"/" + m_name +
+                       L"/" + m_branch + L"/" + task.relativePath;
+            task.fileSize = child->size;
+            m_tasks.push_back(std::move(task));
+        }
     }
 }
 
@@ -150,6 +150,6 @@ void DownloadManager::resume() {
 void DownloadManager::cancel() {
     m_cancelled = true;
     m_state = DownloadState::Cancelled;
-    if (m_threadPool) m_threadPool = std::make_unique<ThreadPool>(4);
+    m_threadPool = std::make_unique<ThreadPool>(4);
     addLog(LogLevel::Info, L"Download cancelled");
 }

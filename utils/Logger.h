@@ -5,7 +5,7 @@ class Logger {
 public:
     Logger() = default;
 
-    void log(LogLevel level, std::wstring msg, const std::source_location& loc = std::source_location::current()) {
+    void log(LogLevel level, std::wstring msg, [[maybe_unused]] const std::source_location& loc = std::source_location::current()) {
         LogEntry entry;
         entry.timestamp = std::chrono::system_clock::now();
         entry.level = level;

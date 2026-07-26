@@ -21,7 +21,7 @@ void UIButton::render(D2DRenderer& r) {
 
     if (!m_text.empty()) {
         auto fmt = r.createTextFormat(12.5f);
-        r.drawText(m_text, rect, fmt.Get(), Colors::TextPrimary(), D2D1_TEXT_ALIGNMENT_CENTER);
+        r.drawText(m_text, rect, fmt.Get(), Colors::TextPrimary(), DWRITE_TEXT_ALIGNMENT_CENTER);
     }
 }
 
@@ -30,7 +30,7 @@ bool UIButton::handleMouseDown(int x, int y) {
     return false;
 }
 
-bool UIButton::handleMouseUp(int x, int y) {
+bool UIButton::handleMouseUp(int, int) {
     if (m_pressed) { m_pressed = false; return true; }
     return false;
 }
@@ -41,7 +41,7 @@ bool UIButton::hitTest(int x, int y) const {
     return x >= m_x && x <= m_x + m_w && y >= m_y && y <= m_y + m_h;
 }
 
-bool UIButton::wasClicked(int x, int y) {
+bool UIButton::wasClicked(int, int) {
     if (m_clicked) { m_clicked = false; return true; }
     return false;
 }
@@ -81,9 +81,17 @@ void UIInput::render(D2DRenderer& r) {
     if (m_focused) {
         auto monoFmt = r.createMonoTextFormat(13.0f);
         std::wstring beforeCursor = m_text.substr(0, m_cursor);
-        D2D1_SIZE_F sz;
-        monoFmt->MeasureText(beforeCursor.c_str(), (UINT32)beforeCursor.size(), &sz);
-        float cursorX = m_x + textPad + sz.width;
+        float cursorX = m_x + textPad;
+        if (!beforeCursor.empty() && r.getDWrite() && monoFmt) {
+            Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;
+            r.getDWrite()->CreateTextLayout(beforeCursor.c_str(), (UINT32)beforeCursor.size(),
+                monoFmt.Get(), 0, 0, layout.GetAddressOf());
+            if (layout) {
+                DWRITE_TEXT_METRICS metrics;
+                layout->GetMetrics(&metrics);
+                cursorX = m_x + textPad + metrics.width;
+            }
+        }
         D2D1_COLOR_F cursorColor = Colors::TextPrimary();
         auto now = std::chrono::steady_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
@@ -153,8 +161,6 @@ UICheckbox::UICheckbox(float x, float y, float size, std::wstring label, bool ch
 void UICheckbox::render(D2DRenderer& r) {
     m_checkAnim.update(0.016f);
     float anim = m_checkAnim.getValue();
-    float boxCenterX = m_x + m_size / 2;
-    float boxCenterY = m_y + m_size / 2;
     D2D1_RECT_F boxRect = D2D1::RectF(m_x, m_y, m_x + m_size, m_y + m_size);
 
     D2D1_COLOR_F bgColor = m_checked ? Colors::CheckBox() : Colors::InputBg();
@@ -194,7 +200,6 @@ bool UICheckbox::hitTest(int x, int y) const {
     return x >= m_x && x <= m_x + m_size + 8 + 200 && y >= m_y && y <= m_y + m_size;
 }
 
-bool UICheckbox::wasToggled() { bool v = m_toggled; m_toggled = false; return v; }
 
 D2D1_RECT_F UICheckbox::getRect() const { return D2D1::RectF(m_x, m_y, m_x + m_size, m_y + m_size); }
 
@@ -269,37 +274,67 @@ void UITreeView::drawItem(D2DRenderer& r, const std::shared_ptr<FileNode>& node,
             Colors::SurfaceHover());
     }
 
-    float iconX = itemX;
-    float iconY = yOffset + m_itemHeight / 2;
-    float iconR = 5.0f;
+    float currX = itemX;
+    float centerY = yOffset + m_itemHeight / 2;
 
+    // Chevron arrow for directories
     if (node->isDir) {
-        D2D1_COLOR_F folderColor = Colors::FolderIcon();
-        r.drawFilledEllipse(D2D1::Point2F(iconX + 6, iconY), iconR, iconR * 0.7f, folderColor);
-        float arrowX = itemX + 18;
         if (node->expanded) {
-            r.drawLine(D2D1::Point2F(arrowX, iconY - 2), D2D1::Point2F(arrowX + 3, iconY + 2), Colors::TextMuted(), 1.0f);
-            r.drawLine(D2D1::Point2F(arrowX + 3, iconY + 2), D2D1::Point2F(arrowX + 6, iconY - 2), Colors::TextMuted(), 1.0f);
+            r.drawLine(D2D1::Point2F(currX, centerY - 2), D2D1::Point2F(currX + 4, centerY + 2), Colors::TextMuted(), 1.2f);
+            r.drawLine(D2D1::Point2F(currX + 4, centerY + 2), D2D1::Point2F(currX + 8, centerY - 2), Colors::TextMuted(), 1.2f);
         } else {
-            r.drawLine(D2D1::Point2F(arrowX, iconY - 3), D2D1::Point2F(arrowX + 3, iconY), Colors::TextMuted(), 1.0f);
-            r.drawLine(D2D1::Point2F(arrowX + 3, iconY), D2D1::Point2F(arrowX, iconY + 3), Colors::TextMuted(), 1.0f);
+            r.drawLine(D2D1::Point2F(currX + 2, centerY - 4), D2D1::Point2F(currX + 6, centerY), Colors::TextMuted(), 1.2f);
+            r.drawLine(D2D1::Point2F(currX + 6, centerY), D2D1::Point2F(currX + 2, centerY + 4), Colors::TextMuted(), 1.2f);
         }
+        currX += 14;
     } else {
-        D2D1_COLOR_F fileColor = Colors::FileIcon();
-        D2D1_RECT_F fileIcon = D2D1::RectF(iconX + 2, iconY - 5, iconX + 10, iconY + 5);
-        r.drawFilledRoundedRectangle(fileIcon, fileColor, 1.5f);
+        currX += 14;
     }
 
-    float textX = itemX + 26;
-    auto fmt = r.createTextFormat(12.0f);
-    D2D1_RECT_F textRect = D2D1::RectF(textX, yOffset, m_x + m_w - 80, yOffset + m_itemHeight);
-    r.drawTextClipped(node->name, textRect, fmt.Get(),
-        node->isDir ? Colors::TextPrimary() : Colors::TextSecondary());
+    // Checkbox
+    float cbSize = 14.0f;
+    D2D1_RECT_F cbRect = D2D1::RectF(currX, centerY - cbSize / 2, currX + cbSize, centerY + cbSize / 2);
+    D2D1_COLOR_F cbBg = node->selected ? Colors::Primary() : Colors::InputBg();
+    D2D1_COLOR_F cbBorder = node->selected ? Colors::Primary() : Colors::Border();
+    r.drawFilledRoundedRectangle(cbRect, cbBg, 3.0f);
+    r.drawRoundedRectangle(cbRect, cbBorder, 3.0f, 1.0f);
 
+    if (node->selected) {
+        // Checkmark
+        r.drawLine(D2D1::Point2F(currX + 3, centerY), D2D1::Point2F(currX + 6, centerY + 3), Colors::TextPrimary(), 1.5f);
+        r.drawLine(D2D1::Point2F(currX + 6, centerY + 3), D2D1::Point2F(currX + 11, centerY - 3), Colors::TextPrimary(), 1.5f);
+    }
+    currX += cbSize + 8;
+
+    // Icon (Folder / File / Code)
+    if (node->isDir) {
+        D2D1_RECT_F folderRect = D2D1::RectF(currX, centerY - 6, currX + 14, centerY + 6);
+        r.drawFilledRoundedRectangle(folderRect, Colors::FolderIcon(), 2.0f);
+        currX += 18;
+    } else {
+        bool isCode = (node->name.ends_with(L".html") || node->name.ends_with(L".htm"));
+        D2D1_COLOR_F iconColor = isCode ? Colors::TextCodeIcon() : Colors::FileIcon();
+        if (isCode) {
+            auto codeFmt = r.createTextFormat(10.0f, L"Consolas", DWRITE_FONT_WEIGHT_BOLD);
+            r.drawText(L"<>", D2D1::RectF(currX, centerY - 7, currX + 14, centerY + 7), codeFmt.Get(), iconColor);
+        } else {
+            D2D1_RECT_F fileRect = D2D1::RectF(currX + 2, centerY - 6, currX + 11, centerY + 6);
+            r.drawFilledRoundedRectangle(fileRect, iconColor, 1.5f);
+        }
+        currX += 18;
+    }
+
+    // Name label
+    auto fmt = r.createTextFormat(12.0f);
+    D2D1_RECT_F textRect = D2D1::RectF(currX, yOffset, m_x + m_w - 85, yOffset + m_itemHeight);
+    r.drawTextClipped(node->name, textRect, fmt.Get(),
+        node->isDir ? Colors::TextPrimary() : Colors::TextPrimary());
+
+    // Size label (Right aligned)
     if (!node->isDir && node->size > 0) {
-        auto sizeFmt = r.createTextFormat(11.0f, L"Cascadia Code");
-        D2D1_RECT_F sizeRect = D2D1::RectF(m_x + m_w - 75, yOffset, m_x + m_w - 8, yOffset + m_itemHeight);
-        r.drawText(Str::formatBytes(node->size), sizeRect, sizeFmt.Get(), Colors::TextMuted(), D2D1_TEXT_ALIGNMENT_TRAILING);
+        auto sizeFmt = r.createTextFormat(11.0f);
+        D2D1_RECT_F sizeRect = D2D1::RectF(m_x + m_w - 80, yOffset, m_x + m_w - 10, yOffset + m_itemHeight);
+        r.drawText(Str::formatBytes(node->size), sizeRect, sizeFmt.Get(), Colors::TextMuted(), DWRITE_TEXT_ALIGNMENT_TRAILING);
     }
 
     yOffset += m_itemHeight;
@@ -390,6 +425,10 @@ bool UITreeView::hitTest(int x, int y) const {
 D2D1_RECT_F UITreeView::getItemRect(int index) const {
     float y = m_y + index * m_itemHeight - m_scrollY;
     return D2D1::RectF(m_x, y, m_x + m_w, y + m_itemHeight);
+}
+
+int UITreeView::getMaxScroll() const {
+    return std::max(0, (int)(m_flatList.size() * m_itemHeight) - (int)m_h + 20);
 }
 
 // ===== UILogPanel =====
