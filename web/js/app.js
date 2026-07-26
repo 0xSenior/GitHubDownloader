@@ -4,41 +4,62 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Initial Repository Data matching screenshot with sorted sub-files
+  // Initial Repository Data matching 0xSenior/GitHubDownloader
   let repoFilesData = [
     {
-      id: 'folder-css',
+      id: 'folder-download',
       type: 'folder',
-      name: 'css',
+      name: 'download',
       expanded: true,
       children: [
-        { id: 'file-bootstrap-css', type: 'file', ext: 'css', name: 'bootstrap.min.css', size: '226.7 KB', sizeBytes: 232140, checked: false },
-        { id: 'file-media-css', type: 'file', ext: 'css', name: 'media.css', size: '259 B', sizeBytes: 259, checked: false },
-        { id: 'file-style-css', type: 'file', ext: 'css', name: 'style.css', size: '2.3 KB', sizeBytes: 2355, checked: false }
+        { id: 'file-dl-cpp', type: 'file', ext: 'cpp', name: 'DownloadManager.cpp', size: '14.2 KB', sizeBytes: 14230, checked: false },
+        { id: 'file-dl-h', type: 'file', ext: 'h', name: 'DownloadManager.h', size: '3.4 KB', sizeBytes: 3450, checked: false }
       ]
     },
     {
-      id: 'folder-images',
+      id: 'folder-filesystem',
       type: 'folder',
-      name: 'images',
+      name: 'filesystem',
       expanded: true,
       children: [
-        { id: 'file-contact-jpg', type: 'file', ext: 'jpg', name: 'contact-image.jpg', size: '174.3 KB', sizeBytes: 178483, checked: false },
-        { id: 'file-contacts-book-png', type: 'file', ext: 'png', name: 'contacts-book.png', size: '1.3 KB', sizeBytes: 1331, checked: false },
-        { id: 'file-navbar-icon-jpg', type: 'file', ext: 'jpg', name: 'navbar-icon.jpg', size: '206.1 KB', sizeBytes: 211046, checked: false }
+        { id: 'file-fs-cpp', type: 'file', ext: 'cpp', name: 'FilesystemHelper.cpp', size: '8.9 KB', sizeBytes: 8920, checked: false },
+        { id: 'file-fs-h', type: 'file', ext: 'h', name: 'FilesystemHelper.h', size: '2.1 KB', sizeBytes: 2100, checked: false }
       ]
     },
     {
-      id: 'folder-js',
+      id: 'folder-github',
       type: 'folder',
-      name: 'js',
+      name: 'github',
       expanded: true,
       children: [
-        { id: 'file-bootstrap-js', type: 'file', ext: 'js', name: 'bootstrap.bundle.min.js', size: '78.6 KB', sizeBytes: 80486, checked: false },
-        { id: 'file-main-js', type: 'file', ext: 'js', name: 'main.js', size: '11.9 KB', sizeBytes: 12185, checked: false }
+        { id: 'file-gh-api', type: 'file', ext: 'cpp', name: 'GitHubApi.cpp', size: '11.4 KB', sizeBytes: 11400, checked: false },
+        { id: 'file-gh-parser', type: 'file', ext: 'cpp', name: 'RepoParser.cpp', size: '6.8 KB', sizeBytes: 6800, checked: false }
       ]
     },
-    { id: 'file-index-html', type: 'file', ext: 'html', name: 'index.html', size: '19.7 KB', sizeBytes: 20172, checked: false }
+    {
+      id: 'folder-ui',
+      type: 'folder',
+      name: 'ui',
+      expanded: true,
+      children: [
+        { id: 'file-ui-renderer', type: 'file', ext: 'cpp', name: 'D2DRenderer.cpp', size: '18.6 KB', sizeBytes: 18600, checked: false },
+        { id: 'file-ui-window', type: 'file', ext: 'cpp', name: 'MainWindow.cpp', size: '28.4 KB', sizeBytes: 28400, checked: false },
+        { id: 'file-ui-components', type: 'file', ext: 'cpp', name: 'UIComponents.cpp', size: '22.4 KB', sizeBytes: 22400, checked: false }
+      ]
+    },
+    {
+      id: 'folder-web',
+      type: 'folder',
+      name: 'web',
+      expanded: true,
+      children: [
+        { id: 'file-web-index', type: 'file', ext: 'html', name: 'index.html', size: '12.7 KB', sizeBytes: 12750, checked: false },
+        { id: 'file-web-css', type: 'file', ext: 'css', name: 'style.css', size: '18.9 KB', sizeBytes: 18900, checked: false },
+        { id: 'file-web-js', type: 'file', ext: 'js', name: 'app.js', size: '12.5 KB', sizeBytes: 12500, checked: false }
+      ]
+    },
+    { id: 'file-readme', type: 'file', ext: 'md', name: 'README.md', size: '3.8 KB', sizeBytes: 3850, checked: false },
+    { id: 'file-sln', type: 'file', ext: 'sln', name: 'GitHubDownloader.sln', size: '1.4 KB', sizeBytes: 1420, checked: false }
   ];
 
   // DOM Elements
@@ -64,11 +85,23 @@ document.addEventListener('DOMContentLoaded', () => {
     return `<svg class="tree-icon folder-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>`;
   }
 
-  function getCodeIcon() {
-    return `<svg class="tree-icon code-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
-  }
-
-  function getFileIcon() {
+  function getFileIconByExtension(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'html' || ext === 'htm') {
+      return `<svg class="tree-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f97316" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
+    }
+    if (ext === 'css') {
+      return `<svg class="tree-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/><line x1="8" y1="3" x2="6" y2="21"/><line x1="18" y1="3" x2="16" y2="21"/></svg>`;
+    }
+    if (ext === 'js' || ext === 'jsx' || ext === 'ts' || ext === 'tsx') {
+      return `<svg class="tree-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#eab308" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M10 9v6M14 9v4a2 2 0 002 2"/></svg>`;
+    }
+    if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico'].includes(ext)) {
+      return `<svg class="tree-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#34d399" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+    }
+    if (['json', 'yml', 'yaml'].includes(ext)) {
+      return `<svg class="tree-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#c084fc" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M10 12a1 1 0 011 1v1a1 1 0 01-1 1"/></svg>`;
+    }
     return `<svg class="tree-icon file-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
   }
 
@@ -140,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="tree-checkbox ${child.checked ? 'checked' : ''}" data-file-id="${child.id}">
                   ${child.checked ? getCheckSvg() : ''}
                 </div>
-                ${getFileIcon()}
+                ${getFileIconByExtension(child.name)}
                 <span class="tree-name">${child.name}</span>
               </div>
               <span class="tree-size">${child.size}</span>
@@ -159,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Root Level File (e.g. index.html)
         const fileRow = document.createElement('div');
         fileRow.className = 'tree-item';
-        const iconSvg = item.ext === 'html' ? getCodeIcon() : getFileIcon();
+        const iconSvg = getFileIconByExtension(item.name);
 
         fileRow.innerHTML = `
           <div class="tree-item-left">

@@ -6,50 +6,64 @@
 
 static std::shared_ptr<FileNode> createInitialMockTree() {
     auto root = std::make_shared<FileNode>();
-    root->name = L"daliabela/crud";
+    root->name = L"0xSenior/GitHubDownloader";
     root->isDir = true;
     root->expanded = true;
 
-    auto cssDir = std::make_shared<FileNode>();
-    cssDir->name = L"css";
-    cssDir->isDir = true;
-    cssDir->expanded = true;
+    // download
+    auto dlDir = std::make_shared<FileNode>();
+    dlDir->name = L"download"; dlDir->isDir = true; dlDir->expanded = true;
+    auto f1 = std::make_shared<FileNode>(); f1->name = L"DownloadManager.cpp"; f1->size = 14230; f1->selected = false;
+    auto f2 = std::make_shared<FileNode>(); f2->name = L"DownloadManager.h"; f2->size = 3450; f2->selected = false;
+    dlDir->children = { f1, f2 };
 
-    auto f1 = std::make_shared<FileNode>(); f1->name = L"bootstrap.min.css"; f1->size = 232140; f1->selected = false;
-    auto f2 = std::make_shared<FileNode>(); f2->name = L"media.css"; f2->size = 259; f2->selected = false;
-    auto f3 = std::make_shared<FileNode>(); f3->name = L"style.css"; f3->size = 2355; f3->selected = false;
-    cssDir->children = { f1, f2, f3 };
+    // filesystem
+    auto fsDir = std::make_shared<FileNode>();
+    fsDir->name = L"filesystem"; fsDir->isDir = true; fsDir->expanded = true;
+    auto f3 = std::make_shared<FileNode>(); f3->name = L"FilesystemHelper.cpp"; f3->size = 8920; f3->selected = false;
+    auto f4 = std::make_shared<FileNode>(); f4->name = L"FilesystemHelper.h"; f4->size = 2100; f4->selected = false;
+    fsDir->children = { f3, f4 };
 
-    auto imgDir = std::make_shared<FileNode>();
-    imgDir->name = L"images";
-    imgDir->isDir = true;
-    imgDir->expanded = true;
+    // github
+    auto ghDir = std::make_shared<FileNode>();
+    ghDir->name = L"github"; ghDir->isDir = true; ghDir->expanded = true;
+    auto f5 = std::make_shared<FileNode>(); f5->name = L"GitHubApi.cpp"; f5->size = 11400; f5->selected = false;
+    auto f6 = std::make_shared<FileNode>(); f6->name = L"RepoParser.cpp"; f6->size = 6800; f6->selected = false;
+    ghDir->children = { f5, f6 };
 
-    auto f4 = std::make_shared<FileNode>(); f4->name = L"contact-image.jpg"; f4->size = 178483; f4->selected = false;
-    auto f5 = std::make_shared<FileNode>(); f5->name = L"contacts-book.png"; f5->size = 1331; f5->selected = false;
-    auto f6 = std::make_shared<FileNode>(); f6->name = L"navbar-icon.jpg"; f6->size = 211046; f6->selected = false;
-    imgDir->children = { f4, f5, f6 };
+    // ui
+    auto uiDir = std::make_shared<FileNode>();
+    uiDir->name = L"ui"; uiDir->isDir = true; uiDir->expanded = true;
+    auto f7 = std::make_shared<FileNode>(); f7->name = L"D2DRenderer.cpp"; f7->size = 18600; f7->selected = false;
+    auto f8 = std::make_shared<FileNode>(); f8->name = L"MainWindow.cpp"; f8->size = 28400; f8->selected = false;
+    auto f9 = std::make_shared<FileNode>(); f9->name = L"UIComponents.cpp"; f9->size = 22400; f9->selected = false;
+    uiDir->children = { f7, f8, f9 };
 
-    auto jsDir = std::make_shared<FileNode>();
-    jsDir->name = L"js";
-    jsDir->isDir = true;
-    jsDir->expanded = true;
+    // web
+    auto webDir = std::make_shared<FileNode>();
+    webDir->name = L"web"; webDir->isDir = true; webDir->expanded = true;
+    auto f10 = std::make_shared<FileNode>(); f10->name = L"index.html"; f10->size = 12750; f10->selected = false;
+    auto f11 = std::make_shared<FileNode>(); f11->name = L"style.css"; f11->size = 18900; f11->selected = false;
+    auto f12 = std::make_shared<FileNode>(); f12->name = L"app.js"; f12->size = 12500; f12->selected = false;
+    webDir->children = { f10, f11, f12 };
 
-    auto f7 = std::make_shared<FileNode>(); f7->name = L"bootstrap.bundle.min.js"; f7->size = 80486; f7->selected = false;
-    auto f8 = std::make_shared<FileNode>(); f8->name = L"main.js"; f8->size = 12185; f8->selected = false;
-    jsDir->children = { f7, f8 };
+    // Root files
+    auto f13 = std::make_shared<FileNode>(); f13->name = L"README.md"; f13->size = 3850; f13->selected = false;
+    auto f14 = std::make_shared<FileNode>(); f14->name = L"GitHubDownloader.sln"; f14->size = 1420; f14->selected = false;
 
-    auto f9 = std::make_shared<FileNode>(); f9->name = L"index.html"; f9->size = 20172; f9->selected = false;
-
-    root->children = { cssDir, imgDir, jsDir, f9 };
+    root->children = { dlDir, fsDir, ghDir, uiDir, webDir, f13, f14 };
     return root;
 }
 
 MainWindow::MainWindow() {
-    m_inputUrl.setText(L"https://github.com/daliabela/crud");
+    m_inputUrl.setText(L"https://github.com/0xSenior/GitHubDownloader");
     m_inputBranch.setText(L"main");
     m_downloadPath = L"C:\\Users\\Senior\\Downloads\\GitHub_";
     m_inputPath.setText(m_downloadPath);
+
+    D2D1_COLOR_F glassBg = D2D1::ColorF(0.12f, 0.15f, 0.23f, 1.0f);
+    m_btnPaste.setStyle(glassBg, Colors::TextPrimary());
+    m_btnBrowse.setStyle(glassBg, Colors::TextPrimary());
 
     m_fileTree = createInitialMockTree();
     m_treeView.setRoot(m_fileTree);
@@ -169,6 +183,15 @@ LRESULT MainWindow::handleMessage(UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(m_hwnd, msg, wp, lp);
 }
 
+static void drawGitHubLogo(D2DRenderer& r, float x, float y, float targetSize) {
+    D2D1_COLOR_F white = { 1.0f, 1.0f, 1.0f, 1.0f };
+    static const std::string githubSvgPath =
+        "M12 0 C5.37 0 0 5.37 0 12 c0 5.31 3.435 9.795 8.205 11.385 c0.6 0.105 0.825 -0.255 0.825 -0.57 c0 -0.285 -0.015 -1.23 -0.015 -2.235 c-3.015 0.555 -3.795 -0.735 -4.035 -1.41 c-0.135 -0.345 -0.72 -1.41 -1.23 -1.695 c-0.42 -0.225 -1.02 -0.78 -0.015 -0.795 c0.945 -0.015 1.62 0.87 1.845 1.23 c1.08 1.815 2.805 1.305 3.495 0.99 c0.105 -0.78 0.42 -1.305 0.765 -1.605 c-2.67 -0.3 -5.46 -1.335 -5.46 -5.925 c0 -1.305 0.465 -2.385 1.23 -3.225 c-0.12 -0.3 -0.54 -1.53 0.12 -3.18 c0 0 1.005 -0.315 3.3 1.23 c0.96 -0.27 1.98 -0.405 3 -0.405 s2.04 0.135 3 0.405 c2.295 -1.56 3.3 -1.23 3.3 -1.23 c0.66 1.65 0.24 2.88 0.12 3.18 c0.765 0.84 1.23 1.905 1.23 3.225 c0 4.605 -2.805 5.625 -5.475 5.925 c0.435 0.375 0.81 1.095 0.81 2.22 c0 1.605 -0.015 2.895 -0.015 3.3 c0 0.315 0.225 0.69 0.825 0.57 A12.02 12.02 0 0 0 24 12 c0 -6.63 -5.37 -12 -12 -12 z";
+
+    float scale = targetSize / 24.0f;
+    r.drawSvgPath(githubSvgPath, white, scale, x, y);
+}
+
 static void drawHeaderIconAvatar(D2DRenderer& r, float x, float y, int type) {
     // Icon Avatar Box
     D2D1_RECT_F avatarRect = D2D1::RectF(x, y, x + 28, y + 28);
@@ -227,11 +250,10 @@ void MainWindow::onPaint() {
     m_renderer.drawLine(D2D1::Point2F(0, headerH), D2D1::Point2F(w, headerH), Colors::Border(), 1.0f);
 
     // Title GitHub Mark + Title & Subtitle
-    D2D1_COLOR_F white = { 1.0f, 1.0f, 1.0f, 1.0f };
-    m_renderer.drawFilledEllipse(D2D1::Point2F(Layout::Padding + 12, 30), 10.0f, 10.0f, white);
-    m_renderer.drawText(L"GitHub Downloader", D2D1::RectF(Layout::Padding + 32, 12, 400, 32),
+    drawGitHubLogo(m_renderer, Layout::Padding, 16.0f, 26.0f);
+    m_renderer.drawText(L"GitHub Downloader", D2D1::RectF(Layout::Padding + 34, 12, 400, 32),
         titleFmt.Get(), Colors::TextPrimary());
-    m_renderer.drawText(L"Download GitHub repositories with ease", D2D1::RectF(Layout::Padding + 32, 32, 400, 52),
+    m_renderer.drawText(L"Download GitHub repositories with ease", D2D1::RectF(Layout::Padding + 34, 32, 400, 52),
         subFmt.Get(), Colors::TextSecondary());
 
     // Version Badge pill
@@ -240,7 +262,7 @@ void MainWindow::onPaint() {
     D2D1_COLOR_F verBorder = { 0.388f, 0.400f, 0.945f, 0.35f };
     m_renderer.drawFilledRoundedRectangle(verBadgeRect, verBg, 11.0f);
     m_renderer.drawRoundedRectangle(verBadgeRect, verBorder, 11.0f, 1.0f);
-    m_renderer.drawText(L"v2.0.0", verBadgeRect, badgeFmt.Get(), Colors::Accent(), DWRITE_TEXT_ALIGNMENT_CENTER);
+    m_renderer.drawText(L"v1.0.0", verBadgeRect, badgeFmt.Get(), Colors::Accent(), DWRITE_TEXT_ALIGNMENT_CENTER);
 
     float curY = headerH + Layout::Padding;
 
@@ -329,7 +351,7 @@ void MainWindow::onPaint() {
         sectionFmt.Get(), Colors::TextPrimary());
 
     int selCount = m_treeView.getSelectedCount();
-    m_renderer.drawText(L"9 files  •  3 folders", D2D1::RectF(Layout::Padding + treeCardW - 160, curY + 14, Layout::Padding + treeCardW - 16, curY + 32),
+    m_renderer.drawText(L"14 files  \x2022  5 folders", D2D1::RectF(Layout::Padding + treeCardW - 170, curY + 14, Layout::Padding + treeCardW - 16, curY + 32),
         subFmt.Get(), Colors::TextBlue(), DWRITE_TEXT_ALIGNMENT_TRAILING);
 
     m_treeView.setRect(Layout::Padding + 12, curY + 42, treeCardW - 24, splitH - 54);

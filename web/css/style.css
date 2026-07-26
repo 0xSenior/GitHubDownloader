@@ -468,6 +468,7 @@ body {
   color: var(--text-secondary);
 }
 
+/* Checkbox & Animations */
 .tree-checkbox {
   width: 16px;
   height: 16px;
@@ -478,7 +479,7 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   margin-right: 2px;
 }
 
@@ -486,98 +487,64 @@ body {
   background-color: var(--accent-purple);
   border-color: var(--accent-purple);
   color: #ffffff;
+  animation: checkPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.tree-name {
-  font-size: 13px;
-  color: var(--text-primary);
-  font-weight: 400;
+.tree-item.is-selected-row {
+  background-color: rgba(99, 102, 241, 0.08);
 }
 
-.tree-size {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-family: var(--font-family);
+@keyframes checkPop {
+  0% { transform: scale(0.7); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1.0); }
 }
 
-/* Tree Indentation */
-.indent-1 { padding-left: 24px; }
-.indent-2 { padding-left: 44px; }
-
-/* Selection Card */
-.selection-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+@keyframes slideInItem {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1.0);
+  }
 }
 
-.selection-header {
+@keyframes floatFolder {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.selected-file-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  animation: slideInItem 0.25s ease-out forwards;
+  transition: all 0.2s ease;
+  margin-bottom: 6px;
 }
 
-.selection-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-purple-outline {
-  background-color: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #a5b4fc;
-  padding: 6px 14px;
-  font-size: 12px;
-}
-
-.btn-purple-outline:hover {
-  background-color: rgba(99, 102, 241, 0.25);
-  color: #ffffff;
-}
-
-.btn-dark-outline {
-  background-color: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  padding: 6px 14px;
-  font-size: 12px;
-}
-
-.btn-dark-outline:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
-}
-
-.selected-count-label {
-  font-size: 12px;
-  color: var(--text-blue);
-  font-weight: 500;
-}
-
-/* Empty State */
-.selection-body {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px dashed var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 24px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 12px;
+.selected-file-row:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateX(4px);
 }
 
 .big-folder-icon {
   width: 72px;
   height: 72px;
   border-radius: 50%;
+  background: rgba(245, 158, 11, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: floatFolder 3s ease-in-out infinite;
+}
   background-color: rgba(255, 255, 255, 0.03);
   display: flex;
   align-items: center;

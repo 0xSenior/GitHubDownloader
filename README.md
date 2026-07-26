@@ -1,4 +1,4 @@
-# 🚀 GitHub Downloader v2.0.0
+# 🚀 GitHub Downloader
 
 A high-performance, modern, dark-themed **Native Windows Desktop** & **Web Application** designed to explore, select, and download GitHub repositories, specific branches, folders, or individual files with ease.
 

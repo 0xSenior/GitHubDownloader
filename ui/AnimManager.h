@@ -13,7 +13,7 @@ namespace Easing {
 
 class AnimatedFloat {
 public:
-    AnimatedFloat(float initial = 0.0f) : m_value(initial), m_target(initial) {}
+    AnimatedFloat(float initial = 0.0f) : m_value(initial), m_target(initial), m_start(initial) {}
 
     void animateTo(float target, float duration = 0.3f,
                    std::function<float(float)> easing = Easing::easeOutCubic) {
@@ -57,7 +57,8 @@ private:
 
 class AnimatedColor {
 public:
-    AnimatedColor(D2D1_COLOR_F initial = Colors::Background()) : m_value(initial), m_target(initial) {}
+    AnimatedColor(D2D1_COLOR_F initial = Colors::Background())
+        : m_value(initial), m_target(initial), m_start(initial) {}
 
     void animateTo(D2D1_COLOR_F target, float duration = 0.25f) {
         m_start = m_value;

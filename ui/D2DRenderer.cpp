@@ -137,3 +137,100 @@ void D2DRenderer::pushClipRect(const D2D1_RECT_F& r) {
 }
 
 void D2DRenderer::popClipRect() { m_rt->PopAxisAlignedClip(); }
+
+void D2DRenderer::drawSvgPath(const std::string& pathData, const D2D1_COLOR_F& color, float scale, float offsetX, float offsetY) {
+    if (!m_factory || pathData.empty()) return;
+
+    Microsoft::WRL::ComPtr<ID2D1PathGeometry> geometry;
+    if (FAILED(m_factory->CreatePathGeometry(geometry.GetAddressOf()))) return;
+
+    Microsoft::WRL::ComPtr<ID2D1GeometrySink> sink;
+    if (FAILED(geometry->Open(sink.GetAddressOf()))) return;
+
+    std::stringstream ss(pathData);
+    char cmd = 0;
+    float curX = 0, curY = 0;
+    float startX = 0, startY = 0;
+    float lastControlX = 0, lastControlY = 0;
+    bool figureOpen = false;
+
+    auto transformPoint = [&](float x, float y) -> D2D1_POINT_2F {
+        return D2D1::Point2F(offsetX + x * scale, offsetY + y * scale);
+    };
+
+    while (ss >> std::ws && !ss.eof()) {
+        char next = (char)ss.peek();
+        if (std::isalpha((unsigned char)next)) {
+            ss >> cmd;
+        }
+
+        if (cmd == 'M' || cmd == 'm') {
+            float x, y;
+            if (ss >> x >> y) {
+                if (cmd == 'm') { x += curX; y += curY; }
+                curX = x; curY = y;
+                startX = x; startY = y;
+                lastControlX = curX; lastControlY = curY;
+                if (figureOpen) sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+                sink->BeginFigure(transformPoint(curX, curY), D2D1_FIGURE_BEGIN_FILLED);
+                figureOpen = true;
+            }
+        } else if (cmd == 'C' || cmd == 'c') {
+            float x1, y1, x2, y2, x, y;
+            if (ss >> x1 >> y1 >> x2 >> y2 >> x >> y) {
+                if (cmd == 'c') {
+                    x1 += curX; y1 += curY;
+                    x2 += curX; y2 += curY;
+                    x += curX; y += curY;
+                }
+                sink->AddBezier(D2D1::BezierSegment(
+                    transformPoint(x1, y1),
+                    transformPoint(x2, y2),
+                    transformPoint(x, y)
+                ));
+                lastControlX = x2; lastControlY = y2;
+                curX = x; curY = y;
+            }
+        } else if (cmd == 'S' || cmd == 's') {
+            float x2, y2, x, y;
+            if (ss >> x2 >> y2 >> x >> y) {
+                if (cmd == 's') {
+                    x2 += curX; y2 += curY;
+                    x += curX; y += curY;
+                }
+                float x1 = 2 * curX - lastControlX;
+                float y1 = 2 * curY - lastControlY;
+                sink->AddBezier(D2D1::BezierSegment(
+                    transformPoint(x1, y1),
+                    transformPoint(x2, y2),
+                    transformPoint(x, y)
+                ));
+                lastControlX = x2; lastControlY = y2;
+                curX = x; curY = y;
+            }
+        } else if (cmd == 'A' || cmd == 'a') {
+            float rx, ry, angle, largeArc, sweep, x, y;
+            if (ss >> rx >> ry >> angle >> largeArc >> sweep >> x >> y) {
+                if (cmd == 'a') { x += curX; y += curY; }
+                sink->AddLine(transformPoint(x, y));
+                curX = x; curY = y;
+                lastControlX = curX; lastControlY = curY;
+            }
+        } else if (cmd == 'z' || cmd == 'Z') {
+            if (figureOpen) {
+                sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+                figureOpen = false;
+            }
+            curX = startX; curY = startY;
+            lastControlX = curX; lastControlY = curY;
+        }
+    }
+
+    if (figureOpen) sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+    sink->Close();
+
+    auto brush = createBrush(color);
+    if (brush) {
+        m_rt->FillGeometry(geometry.Get(), brush.Get());
+    }
+}

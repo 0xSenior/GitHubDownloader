@@ -54,57 +54,91 @@ UIInput::UIInput(float x, float y, float w, float h, std::wstring placeholder)
     : m_x(x), m_y(y), m_w(w), m_h(h), m_placeholder(std::move(placeholder)) {}
 
 void UIInput::render(D2DRenderer& r) {
-    auto rect = getRect();
-    D2D1_COLOR_F border = m_focused ? Colors::BorderFocus() : (m_hovered ? Colors::TextMuted() : Colors::Border());
-    r.drawFilledRoundedRectangle(rect, Colors::InputBg(), Layout::CornerRadius);
-    r.drawRoundedRectangle(rect, border, Layout::CornerRadius, m_focused ? 1.5f : 1.0f);
+    m_focusAnim.update(0.016f);
+    float focusVal = m_focusAnim.getValue();
 
-    if (m_focused) {
-        float glow = 0.15f;
-        D2D1_COLOR_F glowColor = Colors::Primary();
-        glowColor.a = glow;
-        D2D1_RECT_F glowRect = D2D1::RectF(m_x - 2, m_y - 2, m_x + m_w + 2, m_y + m_h + 2);
-        r.drawRoundedRectangle(glowRect, glowColor, Layout::CornerRadius + 2, 2.0f);
+    auto rect = getRect();
+
+    // Background
+    D2D1_COLOR_F bg = Colors::InputBg();
+    if (m_hovered && !m_focused) {
+        bg = D2D1::ColorF(0.09f, 0.12f, 0.19f, 1.0f);
     }
+    r.drawFilledRoundedRectangle(rect, bg, Layout::CornerRadius);
+
+    // HTML-style Focus Glow Ring (Outer halo)
+    if (focusVal > 0.01f) {
+        D2D1_COLOR_F glowColor = Colors::Primary();
+        glowColor.a = 0.25f * focusVal;
+        D2D1_RECT_F glowRect = D2D1::RectF(m_x - 3.0f * focusVal, m_y - 3.0f * focusVal,
+                                           m_x + m_w + 3.0f * focusVal, m_y + m_h + 3.0f * focusVal);
+        r.drawRoundedRectangle(glowRect, glowColor, Layout::CornerRadius + 3.0f, 2.0f);
+    }
+
+    // Animated Border
+    D2D1_COLOR_F border = Colors::Border();
+    if (focusVal > 0.01f) {
+        border.r = border.r + (Colors::BorderFocus().r - border.r) * focusVal;
+        border.g = border.g + (Colors::BorderFocus().g - border.g) * focusVal;
+        border.b = border.b + (Colors::BorderFocus().b - border.b) * focusVal;
+        border.a = border.a + (Colors::BorderFocus().a - border.a) * focusVal;
+    } else if (m_hovered) {
+        border = D2D1::ColorF(0.55f, 0.36f, 0.96f, 0.45f);
+    }
+    r.drawRoundedRectangle(rect, border, Layout::CornerRadius, focusVal > 0.01f ? 1.5f : 1.0f);
 
     float textPad = 12.0f;
     D2D1_RECT_F textRect = D2D1::RectF(m_x + textPad, m_y, m_x + m_w - textPad, m_y + m_h);
+    auto fmt = r.createTextFormat(13.0f, L"Segoe UI");
 
     if (m_text.empty() && !m_focused) {
-        auto fmt = r.createTextFormat(13.0f);
         r.drawText(m_placeholder, textRect, fmt.Get(), Colors::TextMuted());
     } else {
-        auto fmt = r.createTextFormat(13.0f);
         r.drawTextClipped(m_text, textRect, fmt.Get(), Colors::TextPrimary());
     }
 
-    if (m_focused) {
-        auto monoFmt = r.createMonoTextFormat(13.0f);
+    // Caret Cursor (Breathing smooth fade)
+    if (m_focused && fmt) {
         std::wstring beforeCursor = m_text.substr(0, m_cursor);
-        float cursorX = m_x + textPad;
-        if (!beforeCursor.empty() && r.getDWrite() && monoFmt) {
+        float cursorOffset = 0.0f;
+        if (!beforeCursor.empty() && r.getDWrite()) {
             Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;
             r.getDWrite()->CreateTextLayout(beforeCursor.c_str(), (UINT32)beforeCursor.size(),
-                monoFmt.Get(), 0, 0, layout.GetAddressOf());
+                fmt.Get(), 10000.0f, m_h, layout.GetAddressOf());
             if (layout) {
                 DWRITE_TEXT_METRICS metrics;
                 layout->GetMetrics(&metrics);
-                cursorX = m_x + textPad + metrics.width;
+                cursorOffset = metrics.width;
             }
         }
-        D2D1_COLOR_F cursorColor = Colors::TextPrimary();
+
+        float cursorX = m_x + textPad + cursorOffset;
+
         auto now = std::chrono::steady_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-        if ((ms / 530) % 2 == 0) {
-            r.drawLine(D2D1::Point2F(cursorX, m_y + 6), D2D1::Point2F(cursorX, m_y + m_h - 6),
-                cursorColor, 1.5f);
+        float alpha = 0.5f + 0.5f * std::sin(ms * 0.007f);
+        D2D1_COLOR_F cursorColor = Colors::Accent();
+        cursorColor.a = alpha;
+
+        if (cursorX <= m_x + m_w - textPad) {
+            r.drawLine(D2D1::Point2F(cursorX, m_y + 8), D2D1::Point2F(cursorX, m_y + m_h - 8),
+                cursorColor, 1.8f);
         }
     }
 }
 
 bool UIInput::handleMouseDown(int x, int y) {
-    if (hitTest(x, y)) { m_focused = true; return true; }
-    m_focused = false;
+    if (hitTest(x, y)) {
+        if (!m_focused) {
+            m_focused = true;
+            m_focusAnim.animateTo(1.0f, 0.2f);
+        }
+        return true;
+    }
+    if (m_focused) {
+        m_focused = false;
+        m_focusAnim.animateTo(0.0f, 0.2f);
+    }
     return false;
 }
 
@@ -272,6 +306,9 @@ void UITreeView::drawItem(D2DRenderer& r, const std::shared_ptr<FileNode>& node,
     if (hovered) {
         r.drawFilledRectangle(D2D1::RectF(m_x + 2, yOffset, m_x + m_w - 2, yOffset + m_itemHeight),
             Colors::SurfaceHover());
+    } else if (node->selected) {
+        D2D1_COLOR_F selBg = { 0.388f, 0.400f, 0.945f, 0.08f };
+        r.drawFilledRectangle(D2D1::RectF(m_x + 2, yOffset, m_x + m_w - 2, yOffset + m_itemHeight), selBg);
     }
 
     float currX = itemX;
@@ -306,20 +343,63 @@ void UITreeView::drawItem(D2DRenderer& r, const std::shared_ptr<FileNode>& node,
     }
     currX += cbSize + 8;
 
-    // Icon (Folder / File / Code)
+    // Icon (Vector Folder Icon vs Extension Specific File Icons)
     if (node->isDir) {
-        D2D1_RECT_F folderRect = D2D1::RectF(currX, centerY - 6, currX + 14, centerY + 6);
-        r.drawFilledRoundedRectangle(folderRect, Colors::FolderIcon(), 2.0f);
+        D2D1_COLOR_F folderTab = { 0.753f, 0.518f, 0.988f, 1.0f }; // #c084fc (Light purple tab)
+        D2D1_COLOR_F folderBody = Colors::FolderIcon();            // #a855f7 (Purple body)
+
+        // Folder top tab
+        D2D1_RECT_F tabRect = D2D1::RectF(currX, centerY - 6, currX + 6, centerY - 2);
+        r.drawFilledRoundedRectangle(tabRect, folderTab, 1.5f);
+
+        // Folder main body
+        D2D1_RECT_F folderRect = D2D1::RectF(currX, centerY - 3, currX + 15, centerY + 6);
+        r.drawFilledRoundedRectangle(folderRect, folderBody, 2.0f);
+
+        // Front flap crease line
+        r.drawLine(D2D1::Point2F(currX + 1, centerY - 1), D2D1::Point2F(currX + 14, centerY - 1), folderTab, 1.0f);
         currX += 18;
     } else {
-        bool isCode = (node->name.ends_with(L".html") || node->name.ends_with(L".htm"));
-        D2D1_COLOR_F iconColor = isCode ? Colors::TextCodeIcon() : Colors::FileIcon();
-        if (isCode) {
+        std::wstring nameLower = node->name;
+        std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::towlower);
+
+        D2D1_RECT_F iconBox = D2D1::RectF(currX, centerY - 7, currX + 16, centerY + 7);
+
+        if (nameLower.ends_with(L".html") || nameLower.ends_with(L".htm")) {
+            D2D1_COLOR_F htmlColor = { 0.976f, 0.451f, 0.086f, 1.0f }; // #f97316 (Orange)
             auto codeFmt = r.createTextFormat(10.0f, L"Consolas", DWRITE_FONT_WEIGHT_BOLD);
-            r.drawText(L"<>", D2D1::RectF(currX, centerY - 7, currX + 14, centerY + 7), codeFmt.Get(), iconColor);
+            r.drawText(L"<>", iconBox, codeFmt.Get(), htmlColor);
+        } else if (nameLower.ends_with(L".css")) {
+            D2D1_COLOR_F cssColor = { 0.220f, 0.741f, 0.973f, 1.0f }; // #38bdf8 (Cyan/Blue)
+            auto codeFmt = r.createTextFormat(10.0f, L"Consolas", DWRITE_FONT_WEIGHT_BOLD);
+            r.drawText(L"#", iconBox, codeFmt.Get(), cssColor);
+        } else if (nameLower.ends_with(L".js") || nameLower.ends_with(L".jsx") || nameLower.ends_with(L".ts") || nameLower.ends_with(L".tsx")) {
+            D2D1_COLOR_F jsColor = { 0.918f, 0.702f, 0.031f, 1.0f }; // #eab308 (Yellow)
+            auto codeFmt = r.createTextFormat(9.0f, L"Consolas", DWRITE_FONT_WEIGHT_BOLD);
+            r.drawText(L"JS", iconBox, codeFmt.Get(), jsColor);
+        } else if (nameLower.ends_with(L".jpg") || nameLower.ends_with(L".jpeg") || nameLower.ends_with(L".png") ||
+                   nameLower.ends_with(L".gif") || nameLower.ends_with(L".svg") || nameLower.ends_with(L".webp") || nameLower.ends_with(L".ico")) {
+            D2D1_COLOR_F imgColor = { 0.204f, 0.827f, 0.600f, 1.0f }; // #34d399 (Emerald Green)
+            r.drawRoundedRectangle(D2D1::RectF(currX + 1, centerY - 6, currX + 15, centerY + 6), imgColor, 2.0f, 1.2f);
+            r.drawFilledEllipse(D2D1::Point2F(currX + 5, centerY - 2), 1.5f, 1.5f, imgColor);
+            r.drawLine(D2D1::Point2F(currX + 3, centerY + 4), D2D1::Point2F(currX + 8, centerY - 1), imgColor, 1.2f);
+            r.drawLine(D2D1::Point2F(currX + 8, centerY - 1), D2D1::Point2F(currX + 13, centerY + 4), imgColor, 1.2f);
+        } else if (nameLower.ends_with(L".json") || nameLower.ends_with(L".yml") || nameLower.ends_with(L".yaml")) {
+            D2D1_COLOR_F jsonColor = { 0.753f, 0.518f, 0.988f, 1.0f }; // #c084fc (Purple)
+            auto codeFmt = r.createTextFormat(10.0f, L"Consolas", DWRITE_FONT_WEIGHT_BOLD);
+            r.drawText(L"{}", iconBox, codeFmt.Get(), jsonColor);
+        } else if (nameLower.ends_with(L".cpp") || nameLower.ends_with(L".h") || nameLower.ends_with(L".hpp") || nameLower.ends_with(L".c")) {
+            D2D1_COLOR_F cppColor = { 0.376f, 0.647f, 0.980f, 1.0f }; // #60a5fa (Blue)
+            auto codeFmt = r.createTextFormat(9.0f, L"Consolas", DWRITE_FONT_WEIGHT_BOLD);
+            r.drawText(L"C++", iconBox, codeFmt.Get(), cppColor);
+        } else if (nameLower.ends_with(L".md") || nameLower.ends_with(L".txt")) {
+            D2D1_COLOR_F mdColor = { 0.796f, 0.835f, 0.882f, 1.0f }; // #cbd5e1 (Slate)
+            auto codeFmt = r.createTextFormat(9.0f, L"Consolas", DWRITE_FONT_WEIGHT_BOLD);
+            r.drawText(L"MD", iconBox, codeFmt.Get(), mdColor);
         } else {
-            D2D1_RECT_F fileRect = D2D1::RectF(currX + 2, centerY - 6, currX + 11, centerY + 6);
-            r.drawFilledRoundedRectangle(fileRect, iconColor, 1.5f);
+            D2D1_COLOR_F fileColor = Colors::FileIcon();
+            D2D1_RECT_F fileRect = D2D1::RectF(currX + 2, centerY - 6, currX + 12, centerY + 6);
+            r.drawFilledRoundedRectangle(fileRect, fileColor, 1.5f);
         }
         currX += 18;
     }
