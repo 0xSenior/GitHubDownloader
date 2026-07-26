@@ -75,6 +75,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const downloadBtn = document.getElementById('downloadBtn');
   const statusState = document.getElementById('statusState');
   const statusDetails = document.getElementById('statusDetails');
+  const logsConsole = document.getElementById('logsConsole');
+  const clearLogsBtn = document.getElementById('clearLogsBtn');
+
+  // Logs System Helper
+  function addLog(message, type = 'info') {
+    const row = document.createElement('div');
+    row.className = `log-row ${type}`;
+    const time = new Date().toLocaleTimeString();
+    row.innerHTML = `<span style="color: var(--text-muted); font-size: 10px; margin-right: 6px;">[${time}]</span>${message}`;
+    logsConsole.appendChild(row);
+    logsConsole.scrollTop = logsConsole.scrollHeight;
+    return row;
+  }
+
+  // Clear Logs Handler
+  clearLogsBtn.addEventListener('click', () => {
+    logsConsole.innerHTML = '<div class="log-row info">Console cleared.</div>';
+  });
 
   // Icons Helper
   function getChevronIcon() {
@@ -125,13 +143,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sortedData.forEach(item => {
       if (item.type === 'folder') {
-        // Folder item
-        const folderRow = document.createElement('div');
-        folderRow.className = `tree-item ${item.expanded ? '' : 'collapsed'}`;
-        
         // Calculate folder checked status
         const allChildrenChecked = item.children.every(c => c.checked);
         const someChildrenChecked = item.children.some(c => c.checked);
+
+        // Folder item
+        const folderRow = document.createElement('div');
+        folderRow.className = `tree-item ${item.expanded ? '' : 'collapsed'} ${(allChildrenChecked || someChildrenChecked) ? 'is-selected-row' : ''}`;
 
         folderRow.innerHTML = `
           <div class="tree-item-left">
@@ -167,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const sortedChildren = [...item.children].sort((a, b) => a.name.localeCompare(b.name));
           sortedChildren.forEach(child => {
             const childRow = document.createElement('div');
-            childRow.className = 'tree-item indent-1';
+            childRow.className = `tree-item indent-1 ${child.checked ? 'is-selected-row' : ''}`;
             childRow.innerHTML = `
               <div class="tree-item-left">
                 <div class="tree-checkbox ${child.checked ? 'checked' : ''}" data-file-id="${child.id}">
@@ -191,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         // Root Level File (e.g. index.html)
         const fileRow = document.createElement('div');
-        fileRow.className = 'tree-item';
+        fileRow.className = `tree-item ${item.checked ? 'is-selected-row' : ''}`;
         const iconSvg = getFileIconByExtension(item.name);
 
         fileRow.innerHTML = `
@@ -235,10 +253,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedFiles = allFiles.filter(f => f.checked);
     const count = selectedFiles.length;
 
-    selectedCountLabel.textContent = `${count} files selected`;
+    if (selectedCountLabel) {
+      selectedCountLabel.textContent = `${count} files selected`;
+    }
 
     if (count === 0) {
+      if (!emptyState.classList.contains('hidden')) return;
+      
+      // Animate entry of empty state
       emptyState.classList.remove('hidden');
+      emptyState.classList.remove('fade-out');
+      emptyState.classList.add('fade-in');
       selectedFilesList.classList.add('hidden');
     } else {
       emptyState.classList.add('hidden');
@@ -268,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     updateSelectionState();
     renderTree();
+    addLog('Selected all files.', 'info');
   });
 
   // Deselect All Handler
@@ -281,6 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     updateSelectionState();
     renderTree();
+    addLog('Deselected all files.', 'info');
   });
 
   // Paste Button Handler
@@ -289,42 +316,109 @@ document.addEventListener('DOMContentLoaded', () => {
       const text = await navigator.clipboard.readText();
       if (text) {
         repoUrlInput.value = text;
+        addLog(`Pasted URL from clipboard: ${text}`, 'info');
       }
     } catch (err) {
       repoUrlInput.select();
+      addLog('Could not access clipboard, auto-selected input text.', 'warning');
     }
   });
 
   // Fetch Button Simulation
   fetchBtn.addEventListener('click', () => {
+    if (fetchBtn.classList.contains('fetching')) return;
+    
+    fetchBtn.classList.add('fetching');
     const originalText = fetchBtn.querySelector('span').textContent;
     fetchBtn.querySelector('span').textContent = 'Fetching...';
     statusState.textContent = 'Fetching Repository...';
     
+    addLog(`Initializing connection to repository: ${repoUrlInput.value}...`, 'info');
+    
     setTimeout(() => {
-      fetchBtn.querySelector('span').textContent = originalText;
-      statusState.textContent = 'Ready';
-      statusDetails.textContent = 'Loaded 9 files (721.2 KB)';
-    }, 800);
+      addLog('Successfully connected. Querying repository tree structure...', 'info');
+      setTimeout(() => {
+        const files = getAllFiles();
+        addLog(`Successfully loaded repository structure: ${files.length} files found.`, 'success');
+        
+        fetchBtn.classList.remove('fetching');
+        fetchBtn.querySelector('span').textContent = originalText;
+        statusState.textContent = 'Ready';
+        statusDetails.textContent = `Loaded ${files.length} files (721.2 KB)`;
+      }, 500);
+    }, 600);
   });
 
   // Download Button Handler
   downloadBtn.addEventListener('click', () => {
     const selectedFiles = getAllFiles().filter(f => f.checked);
     if (selectedFiles.length === 0) {
+      addLog('Download aborted: No files selected.', 'error');
       alert('Please select at least one file or folder to download.');
       return;
     }
 
+    addLog(`Initializing batch download of ${selectedFiles.length} file(s)...`, 'info');
     const btnText = downloadBtn.querySelector('span');
+    const originalText = btnText.textContent;
     btnText.textContent = `Downloading ${selectedFiles.length} files...`;
     downloadBtn.style.opacity = '0.8';
+    downloadBtn.disabled = true;
 
-    setTimeout(() => {
-      btnText.textContent = 'Download Selected Files';
-      downloadBtn.style.opacity = '1';
-      alert(`Successfully downloaded ${selectedFiles.length} selected files!`);
-    }, 1200);
+    // Simulate each file download in logs console
+    let completedCount = 0;
+    
+    selectedFiles.forEach((file, index) => {
+      const progressItem = document.createElement('div');
+      progressItem.className = 'log-progress-item';
+      progressItem.innerHTML = `
+        <div class="progress-info-row">
+          <span class="progress-file-name">${file.name}</span>
+          <span class="progress-percentage" id="pct-${file.id}">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="bar-${file.id}"></div>
+        </div>
+        <div class="progress-info-row" style="margin-top: 2px;">
+          <span id="speed-${file.id}">Connecting...</span>
+          <span>Size: ${file.size}</span>
+        </div>
+      `;
+      logsConsole.appendChild(progressItem);
+      logsConsole.scrollTop = logsConsole.scrollHeight;
+
+      let pct = 0;
+      const duration = 800 + Math.random() * 1200;
+      const stepTime = duration / 10;
+      const speed = (2.1 + Math.random() * 4).toFixed(1);
+      
+      const interval = setInterval(() => {
+        pct += 10;
+        if (pct >= 100) {
+          pct = 100;
+          clearInterval(interval);
+          document.getElementById(`pct-${file.id}`).textContent = 'Completed';
+          document.getElementById(`pct-${file.id}`).style.color = '#34d399';
+          document.getElementById(`speed-${file.id}`).textContent = `Finished in ${(duration/1000).toFixed(1)}s`;
+          
+          addLog(`Download finished: ${file.name}`, 'success');
+          completedCount++;
+          
+          if (completedCount === selectedFiles.length) {
+            btnText.textContent = originalText;
+            downloadBtn.style.opacity = '1';
+            downloadBtn.disabled = false;
+            addLog(`All ${selectedFiles.length} files downloaded successfully to folder!`, 'success');
+            statusState.textContent = 'Ready';
+            statusDetails.textContent = `Downloaded ${selectedFiles.length} files.`;
+          }
+        } else {
+          document.getElementById(`pct-${file.id}`).textContent = `${pct}%`;
+          document.getElementById(`bar-${file.id}`).style.width = `${pct}%`;
+          document.getElementById(`speed-${file.id}`).textContent = `${speed} MB/s`;
+        }
+      }, stepTime);
+    });
   });
 
   // Initial Render
