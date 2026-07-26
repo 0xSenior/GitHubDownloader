@@ -1,196 +1,158 @@
 #pragma once
 #include "pch.h"
+#include "ui/D2DRenderer.h"
+#include "ui/AnimManager.h"
 
-// Base UI Component class
-class UIComponent {
+struct UIEvent { int x, y; };
+
+class UIButton {
 public:
-    UIComponent(float x, float y, float width, float height);
-    virtual ~UIComponent() = default;
-
-    // Position and size
-    virtual void setPosition(float x, float y);
-    virtual void setSize(float width, float height);
-    D2D1_RECT_F getBounds() const;
-
-    // State
-    virtual void setEnabled(bool enabled);
-    bool isEnabled() const { return m_enabled; }
-    virtual void setVisible(bool visible);
-    bool isVisible() const { return m_visible; }
-
-    // Events
-    virtual void onMouseEnter() {}
-    virtual void onMouseLeave() {}
-    virtual void onMouseDown(int x, int y) {}
-    virtual void onMouseUp(int x, int y) {}
-    virtual void onMouseMove(int x, int y) {}
-    virtual void onClick() {}
-
-    // Rendering
-    virtual void render(D2DRenderer& renderer) = 0;
-
-    // Hit testing
+    UIButton(float x, float y, float w, float h, std::wstring text = L"");
+    void render(D2DRenderer& r);
+    bool handleMouseDown(int x, int y);
+    bool handleMouseUp(int x, int y);
+    void handleMouseMove(int x, int y);
+    void setRect(float x, float y, float w, float h) { m_x = x; m_y = y; m_w = w; m_h = h; }
+    void setText(std::wstring t) { m_text = std::move(t); }
+    void setEnabled(bool e) { m_enabled = e; }
+    void setStyle(D2D1_COLOR_F bg, D2D1_COLOR_F fg) { m_bgColor.setImmediate(bg); m_fgColor = fg; }
     bool hitTest(int x, int y) const;
-
-protected:
-    float m_x, m_y;
-    float m_width, m_height;
-    bool m_enabled = true;
-    bool m_visible = true;
-    bool m_hovered = false;
-};
-
-// Button Component
-class Button : public UIComponent {
-public:
-    Button(float x, float y, float width, float height, std::wstring text);
-
-    void setText(std::wstring text) { m_text = std::move(text); }
-    void setOnClick(std::function<void()> callback) { m_onClick = std::move(callback); }
-
-    // Events
-    void onMouseEnter() override;
-    void onMouseLeave() override;
-    void onMouseDown(int x, int y) override;
-    void onMouseUp(int x, int y) override;
-    void onClick() override;
-
-    // Rendering
-    void render(D2DRenderer& renderer) override;
+    bool wasClicked(int x, int y);
+    D2D1_RECT_F getRect() const;
 
 private:
+    float m_x, m_y, m_w, m_h;
     std::wstring m_text;
-    std::function<void()> m_onClick;
+    bool m_enabled = true;
+    bool m_hovered = false;
     bool m_pressed = false;
-
-    Microsoft::WRL::ComPtr<IDWriteTextFormat> m_textFormat;
+    AnimatedColor m_bgColor;
+    D2D1_COLOR_F m_fgColor = Colors::TextPrimary();
+    bool m_clicked = false;
 };
 
-// Input Box Component
-class InputBox : public UIComponent {
+class UIInput {
 public:
-    InputBox(float x, float y, float width, float height, std::wstring placeholder = L"");
-
-    void setText(std::wstring text) { m_text = std::move(text); }
+    UIInput(float x, float y, float w, float h, std::wstring placeholder = L"");
+    void render(D2DRenderer& r);
+    bool handleMouseDown(int x, int y);
+    void handleKeyDown(WCHAR key, bool ctrl = false);
+    void setRect(float x, float y, float w, float h) { m_x = x; m_y = y; m_w = w; m_h = h; }
+    void setPlaceholder(std::wstring t) { m_placeholder = std::move(t); }
     std::wstring getText() const { return m_text; }
-    void setPlaceholder(std::wstring placeholder) { m_placeholder = std::move(placeholder); }
-
-    // Events
-    void onMouseDown(int x, int y) override;
-    void onKeyDown(WCHAR key);
-
-    // Rendering
-    void render(D2DRenderer& renderer) override;
-
-    void setFocused(bool focused) { m_focused = focused; }
+    void setText(std::wstring t) { m_text = std::move(t); m_cursor = (int)m_text.size(); }
+    void setFocused(bool f) { m_focused = f; }
     bool isFocused() const { return m_focused; }
+    bool hitTest(int x, int y) const;
+    D2D1_RECT_F getRect() const;
 
 private:
+    float m_x, m_y, m_w, m_h;
     std::wstring m_text;
     std::wstring m_placeholder;
     bool m_focused = false;
-    int m_cursorPos = 0;
-
-    Microsoft::WRL::ComPtr<IDWriteTextFormat> m_textFormat;
+    bool m_hovered = false;
+    int m_cursor = 0;
+    AnimatedFloat m_focusAnim;
 };
 
-// Progress Bar Component
-class ProgressBar : public UIComponent {
+class UICheckbox {
 public:
-    ProgressBar(float x, float y, float width, float height);
-
-    void setProgress(double progress);
-    void setColor(D2D1_COLOR_F color) { m_color = color; }
-
-    // Rendering
-    void render(D2DRenderer& renderer) override;
-
-private:
-    double m_progress = 0.0;
-    D2D1_COLOR_F m_color = Colors::ProgressBar;
-};
-
-// Text Label Component
-class TextLabel : public UIComponent {
-public:
-    TextLabel(float x, float y, float width, float height, std::wstring text);
-
-    void setText(std::wstring text) { m_text = std::move(text); }
-    void setColor(D2D1_COLOR_F color) { m_color = color; }
-    void setFontSize(float size) { m_fontSize = size; }
-
-    // Rendering
-    void render(D2DRenderer& renderer) override;
-
-private:
-    std::wstring m_text;
-    D2D1_COLOR_F m_color = Colors::TextPrimary;
-    float m_fontSize = 14.0f;
-
-    Microsoft::WRL::ComPtr<IDWriteTextFormat> m_textFormat;
-};
-
-// Log Panel Component
-class LogPanel : public UIComponent {
-public:
-    LogPanel(float x, float y, float width, float height);
-
-    void addLogEntry(const LogEntry& entry);
-    void clearLogs();
-
-    // Rendering
-    void render(D2DRenderer& renderer) override;
-
-private:
-    std::vector<LogEntry> m_logs;
-    int m_maxVisibleLines = 50;
-    float m_lineHeight = 20.0f;
-    int m_scrollOffset = 0;
-
-    Microsoft::WRL::ComPtr<IDWriteTextFormat> m_textFormat;
-
-    D2D1_COLOR_F getLogLevelColor(LogLevel level) const;
-};
-
-// Card Component (for file items)
-class Card : public UIComponent {
-public:
-    Card(float x, float y, float width, float height);
-
-    void setContent(std::wstring title, std::wstring subtitle = L"", 
-                    D2D1_COLOR_F accentColor = Colors::Primary);
-
-    // Events
-    void onMouseEnter() override;
-    void onMouseLeave() override;
-
-    // Rendering
-    void render(D2DRenderer& renderer) override;
-
-private:
-    std::wstring m_title;
-    std::wstring m_subtitle;
-    D2D1_COLOR_F m_accentColor;
-    D2D1_COLOR_F m_hoverColor = Colors::SurfaceLight;
-};
-
-// Checkbox Component
-class Checkbox : public UIComponent {
-public:
-    Checkbox(float x, float y, float width, float height, std::wstring label, bool checked = false);
-
-    void setChecked(bool checked) { m_checked = checked; }
+    UICheckbox(float x, float y, float size, std::wstring label = L"", bool checked = true);
+    void render(D2DRenderer& r);
+    bool handleMouseDown(int x, int y);
     bool isChecked() const { return m_checked; }
-    void setOnChanged(std::function<void(bool)> callback) { m_onChanged = std::move(callback); }
-
-    // Events
-    void onClick() override;
-
-    // Rendering
-    void render(D2DRenderer& renderer) override;
+    void setChecked(bool c) { m_checked = c; }
+    void setRect(float x, float y, float s) { m_x = x; m_y = y; m_size = s; }
+    bool hitTest(int x, int y) const;
+    bool wasToggled() { bool v = m_toggled; m_toggled = false; return v; }
+    std::wstring getLabel() const { return m_label; }
+    D2D1_RECT_F getRect() const;
 
 private:
+    float m_x, m_y, m_size;
     std::wstring m_label;
-    bool m_checked = false;
-    std::function<void(bool)> m_onChanged;
+    bool m_checked;
+    bool m_hovered = false;
+    bool m_toggled = false;
+    AnimatedFloat m_checkAnim;
+};
+
+class UIProgressBar {
+public:
+    UIProgressBar(float x, float y, float w, float h);
+    void render(D2DRenderer& r);
+    void setProgress(double p) { m_progress = p; m_animProgress.animateTo((float)p, 0.4f); }
+    void setRect(float x, float y, float w, float h) { m_x = x; m_y = y; m_w = w; m_h = h; }
+    void update(float dt) { m_animProgress.update(dt); }
+
+private:
+    float m_x, m_y, m_w, m_h;
+    double m_progress = 0.0;
+    AnimatedFloat m_animProgress;
+};
+
+class UITextLabel {
+public:
+    UITextLabel(float x, float y, float w, float h, std::wstring text = L"", float fontSize = 13.0f,
+                D2D1_COLOR_F color = Colors::TextPrimary());
+    void render(D2DRenderer& r, IDWriteTextFormat* fmt = nullptr);
+    void setText(std::wstring t) { m_text = std::move(t); }
+    void setColor(D2D1_COLOR_F c) { m_color = c; }
+    void setRect(float x, float y, float w, float h) { m_x = x; m_y = y; m_w = w; m_h = h; }
+    D2D1_RECT_F getRect() const;
+
+private:
+    float m_x, m_y, m_w, m_h;
+    float m_fontSize;
+    std::wstring m_text;
+    D2D1_COLOR_F m_color;
+};
+
+class UITreeView {
+public:
+    UITreeView(float x, float y, float w, float h);
+    void render(D2DRenderer& r);
+    bool handleMouseDown(int x, int y);
+    void handleMouseMove(int x, int y);
+    void handleWheel(int delta);
+    void setRect(float x, float y, float w, float h) { m_x = x; m_y = y; m_w = w; m_h = h; }
+    void setRoot(std::shared_ptr<FileNode> root) { m_root = root; m_scrollY = 0; }
+    std::shared_ptr<FileNode> getRoot() const { return m_root; }
+    int getSelectedCount() const;
+    std::vector<std::wstring> getSelectedPaths() const;
+    bool hitTest(int x, int y) const;
+
+private:
+    float m_x, m_y, m_w, m_h;
+    std::shared_ptr<FileNode> m_root;
+    float m_scrollY = 0;
+    float m_itemHeight = 26.0f;
+    float m_indentSize = 18.0f;
+    float m_checkboxSize = 16.0f;
+    int m_hoveredIndex = -1;
+    std::vector<std::pair<std::shared_ptr<FileNode>, int>> m_flatList;
+
+    void rebuildFlatList();
+    void drawItem(D2DRenderer& r, const std::shared_ptr<FileNode>& node, int depth, float& yOffset);
+    D2D1_RECT_F getItemRect(int index) const;
+    int getMaxScroll() const;
+};
+
+class UILogPanel {
+public:
+    UILogPanel(float x, float y, float w, float h);
+    void render(D2DRenderer& r);
+    void addEntry(const LogEntry& entry);
+    void clear() { m_entries.clear(); m_scrollY = 0; }
+    void setRect(float x, float y, float w, float h) { m_x = x; m_y = y; m_w = w; m_h = h; }
+    void handleWheel(int delta);
+    bool hitTest(int x, int y) const;
+
+private:
+    float m_x, m_y, m_w, m_h;
+    std::vector<LogEntry> m_entries;
+    float m_scrollY = 0;
+    float m_itemHeight = 18.0f;
+    static constexpr int MAX_ENTRIES = 200;
 };
