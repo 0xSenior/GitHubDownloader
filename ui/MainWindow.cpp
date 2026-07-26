@@ -169,6 +169,40 @@ LRESULT MainWindow::handleMessage(UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(m_hwnd, msg, wp, lp);
 }
 
+static void drawHeaderIconAvatar(D2DRenderer& r, float x, float y, int type) {
+    // Icon Avatar Box
+    D2D1_RECT_F avatarRect = D2D1::RectF(x, y, x + 28, y + 28);
+    D2D1_COLOR_F purpleBg = { 0.545f, 0.361f, 0.965f, 0.12f };
+    D2D1_COLOR_F purpleBorder = { 0.545f, 0.361f, 0.965f, 0.25f };
+    D2D1_COLOR_F iconColor = { 0.658f, 0.545f, 0.980f, 1.0f }; // #a78bfa
+
+    r.drawFilledRoundedRectangle(avatarRect, purpleBg, 6.0f);
+    r.drawRoundedRectangle(avatarRect, purpleBorder, 6.0f, 1.0f);
+
+    float cx = x + 14.0f;
+    float cy = y + 14.0f;
+
+    if (type == 0) {
+        // Link Icon
+        r.drawLine(D2D1::Point2F(cx - 5, cy + 2), D2D1::Point2F(cx + 2, cy - 5), iconColor, 1.8f);
+        r.drawLine(D2D1::Point2F(cx - 2, cy - 2), D2D1::Point2F(cx + 4, cy - 2), iconColor, 1.8f);
+        r.drawLine(D2D1::Point2F(cx + 2, cy - 2), D2D1::Point2F(cx + 2, cy + 4), iconColor, 1.8f);
+    } else if (type == 1) {
+        // Branch Icon
+        r.drawLine(D2D1::Point2F(cx - 4, cy - 6), D2D1::Point2F(cx - 4, cy + 6), iconColor, 1.8f);
+        r.drawFilledEllipse(D2D1::Point2F(cx - 4, cy - 4), 2.5f, 2.5f, iconColor);
+        r.drawFilledEllipse(D2D1::Point2F(cx - 4, cy + 4), 2.5f, 2.5f, iconColor);
+        r.drawFilledEllipse(D2D1::Point2F(cx + 4, cy - 4), 2.5f, 2.5f, iconColor);
+        r.drawLine(D2D1::Point2F(cx - 4, cy + 1), D2D1::Point2F(cx + 4, cy - 4), iconColor, 1.5f);
+    } else if (type == 2) {
+        // Folder Icon
+        D2D1_RECT_F folderRect = D2D1::RectF(cx - 6, cy - 4, cx + 6, cy + 5);
+        r.drawFilledRoundedRectangle(folderRect, iconColor, 1.5f);
+        D2D1_RECT_F tabRect = D2D1::RectF(cx - 6, cy - 6, cx - 1, cy - 4);
+        r.drawFilledRoundedRectangle(tabRect, iconColor, 1.0f);
+    }
+}
+
 void MainWindow::onPaint() {
     PAINTSTRUCT ps;
     BeginPaint(m_hwnd, &ps);
@@ -192,10 +226,12 @@ void MainWindow::onPaint() {
     m_renderer.drawFilledRectangle(D2D1::RectF(0, 0, w, headerH), Colors::TitleBar());
     m_renderer.drawLine(D2D1::Point2F(0, headerH), D2D1::Point2F(w, headerH), Colors::Border(), 1.0f);
 
-    // Title & Subtitle
-    m_renderer.drawText(L"GitHub Downloader", D2D1::RectF(Layout::Padding + 36, 12, 400, 32),
+    // Title GitHub Mark + Title & Subtitle
+    D2D1_COLOR_F white = { 1.0f, 1.0f, 1.0f, 1.0f };
+    m_renderer.drawFilledEllipse(D2D1::Point2F(Layout::Padding + 12, 30), 10.0f, 10.0f, white);
+    m_renderer.drawText(L"GitHub Downloader", D2D1::RectF(Layout::Padding + 32, 12, 400, 32),
         titleFmt.Get(), Colors::TextPrimary());
-    m_renderer.drawText(L"Download GitHub repositories with ease", D2D1::RectF(Layout::Padding + 36, 32, 400, 52),
+    m_renderer.drawText(L"Download GitHub repositories with ease", D2D1::RectF(Layout::Padding + 32, 32, 400, 52),
         subFmt.Get(), Colors::TextSecondary());
 
     // Version Badge pill
@@ -214,12 +250,14 @@ void MainWindow::onPaint() {
     m_renderer.drawFilledRoundedRectangle(repoCardRect, Colors::Surface(), Layout::CornerRadius);
     m_renderer.drawRoundedRectangle(repoCardRect, Colors::Border(), Layout::CornerRadius, 1.0f);
 
-    // Section 1 Header
+    // Section 1 Header with Icon Avatar
     float innerX = Layout::Padding + 16.0f;
     float innerY = curY + 14.0f;
-    m_renderer.drawText(L"Repository", D2D1::RectF(innerX + 32, innerY, innerX + 250, innerY + 18),
+    drawHeaderIconAvatar(m_renderer, innerX, innerY, 0); // Link icon
+
+    m_renderer.drawText(L"Repository", D2D1::RectF(innerX + 36, innerY, innerX + 250, innerY + 18),
         sectionFmt.Get(), Colors::TextPrimary());
-    m_renderer.drawText(L"Enter GitHub repository URL", D2D1::RectF(innerX + 32, innerY + 18, innerX + 250, innerY + 34),
+    m_renderer.drawText(L"Enter GitHub repository URL", D2D1::RectF(innerX + 36, innerY + 18, innerX + 250, innerY + 34),
         subFmt.Get(), Colors::TextMuted());
 
     // Input URL row
@@ -247,9 +285,10 @@ void MainWindow::onPaint() {
     m_renderer.drawFilledRoundedRectangle(branchCardRect, Colors::Surface(), Layout::CornerRadius);
     m_renderer.drawRoundedRectangle(branchCardRect, Colors::Border(), Layout::CornerRadius, 1.0f);
 
-    m_renderer.drawText(L"Branch", D2D1::RectF(Layout::Padding + 16 + 32, curY + 12, Layout::Padding + colW, curY + 28),
+    drawHeaderIconAvatar(m_renderer, Layout::Padding + 16, curY + 12, 1); // Branch icon
+    m_renderer.drawText(L"Branch", D2D1::RectF(Layout::Padding + 16 + 36, curY + 10, Layout::Padding + colW, curY + 26),
         sectionFmt.Get(), Colors::TextPrimary());
-    m_renderer.drawText(L"Select repository branch", D2D1::RectF(Layout::Padding + 16 + 32, curY + 28, Layout::Padding + colW, curY + 44),
+    m_renderer.drawText(L"Select repository branch", D2D1::RectF(Layout::Padding + 16 + 36, curY + 26, Layout::Padding + colW, curY + 42),
         subFmt.Get(), Colors::TextMuted());
 
     m_inputBranch.setRect(Layout::Padding + 16, curY + 48, colW - 32, Layout::InputHeight);
@@ -261,9 +300,10 @@ void MainWindow::onPaint() {
     m_renderer.drawFilledRoundedRectangle(pathCardRect, Colors::Surface(), Layout::CornerRadius);
     m_renderer.drawRoundedRectangle(pathCardRect, Colors::Border(), Layout::CornerRadius, 1.0f);
 
-    m_renderer.drawText(L"Download To", D2D1::RectF(rightColX + 16 + 32, curY + 12, rightColX + colW, curY + 28),
+    drawHeaderIconAvatar(m_renderer, rightColX + 16, curY + 12, 2); // Folder icon
+    m_renderer.drawText(L"Download To", D2D1::RectF(rightColX + 16 + 36, curY + 10, rightColX + colW, curY + 26),
         sectionFmt.Get(), Colors::TextPrimary());
-    m_renderer.drawText(L"Choose download location", D2D1::RectF(rightColX + 16 + 32, curY + 28, rightColX + colW, curY + 44),
+    m_renderer.drawText(L"Choose download location", D2D1::RectF(rightColX + 16 + 36, curY + 26, rightColX + colW, curY + 42),
         subFmt.Get(), Colors::TextMuted());
 
     float pathInputW = colW - 32 - Layout::InputHeight - 8;
